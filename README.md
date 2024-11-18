@@ -34,17 +34,19 @@ go run cmd/app/main.go
 
 ### `proxies.csv`
 ```csv
-192.168.1.1:8080
-192.168.1.2:8080
-192.168.1.3:8080
+148.129.126.60:9375:a704Ddn:gY21pM7
+192.62.215.106:9917:a704aDn:gYy34M7
+192.61.216.67:9018:a704Dan:gYypdad7
+192.68.215.217:9294:a704adDn:gYypd7
 ```
 
 ### `parts.csv`
 ```csv
-id,name,quantity
-1,Part A,100
-2,Part B,50
-3,Part C,200
+oem,partnumber
+DAIHATSU;88450B2140
+DAIHATSU;52159B1030100
+DAIHATSU;5320587403
+DAIHATSU;5330187405
 ```
 
 ## Лицензия
