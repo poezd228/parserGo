@@ -1,15 +1,16 @@
 package dependencies
 
-import "parser/internal/service/emex"
+import (
+	"parser/internal/domain"
+	"parser/internal/service/emex"
+)
 
 type dependencies struct {
 	emexService emex.Service
 }
 
-
-
 type Dependencies interface {
-	FillDeps()
+	FillDeps(proxies []string, parts []domain.Part, locations []string)
 	Run()
 }
 
@@ -18,8 +19,8 @@ func NewDependencies() Dependencies {
 
 }
 
-func (d *dependencies) FillDeps(){
-	d.NewEmexService()
+func (d *dependencies) FillDeps(proxies []string, parts []domain.Part, locations []string) {
+	d.NewEmexService(proxies, parts, locations)
 
 }
 func (d *dependencies) Run() {

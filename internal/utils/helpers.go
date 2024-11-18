@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"encoding/csv"
 	"fmt"
 	"log"
@@ -144,4 +145,23 @@ func RandomizeMilliseconds(value int) time.Duration {
 
 	// Возвращаем значение в формате времени
 	return time.Duration(randomMilliseconds) * time.Millisecond
+}
+func ReadProxies() ([]string, error) {
+	file, err := os.Open("internal/files/proxies.txt")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return lines, nil
 }
