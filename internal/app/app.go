@@ -17,6 +17,7 @@ func NewApp() App {
 
 }
 func (a *app) Start() {
+
 	proxies, err := utils.ReadProxies()
 	if err != nil {
 		panic(err)

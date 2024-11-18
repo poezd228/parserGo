@@ -8,6 +8,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 	"io"
 	"log"
+	"os"
 	"parser/internal/domain"
 	"parser/internal/errors"
 	"parser/internal/utils"
@@ -92,7 +93,6 @@ func (s *service) getMainData(url string, proxy string, visitorId string) (domai
 		return domain.Result{}, e
 
 	}
-	fmt.Println(link)
 	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	if e != nil {
@@ -122,7 +122,10 @@ func (s *service) parceTwice(detailNum string, locationId string, proxy string) 
 
 }
 func (s *service) ParseData() {
-	err := utils.WriteModelsToCSV(nil, "emex.csv", true)
+	logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	defer logFile.Close()
+	log.SetOutput(logFile)
+	err = utils.WriteModelsToCSV(nil, "emex.csv", true)
 	if err != nil {
 		log.Panicln("Ну не повезло ")
 	}
@@ -132,7 +135,7 @@ func (s *service) ParseData() {
 		res, er := s.parceTwice(detail.PartNumber, utils.ChooseRandom(s.locationId).(string), proxy)
 		if er != nil && errors2.Is(er.Error(), context.DeadlineExceeded) {
 			_, _ = s.getVisitorId(proxy)
-			fmt.Println(er)
+			log.Println(er)
 			err = utils.WriteModelsToCSV([]domain.Model{
 				{OriginalManufacturer: detail.Oem,
 					OriginalPartNumber: detail.PartNumber},
@@ -142,7 +145,7 @@ func (s *service) ParseData() {
 			}
 
 		} else if er != nil {
-			fmt.Println(er)
+			log.Print(er)
 			err = utils.WriteModelsToCSV([]domain.Model{
 				{OriginalManufacturer: detail.Oem,
 					OriginalPartNumber: detail.PartNumber},
