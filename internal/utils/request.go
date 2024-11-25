@@ -15,11 +15,15 @@ import (
 
 func MakeJsonRequestVisitor(ctx context.Context, link string, proxy string, visitorId string) (http.Response, errors2.ServiceError) {
 	// Заменяем центральное двоеточие на @
-	parts := strings.Split(proxy, ":")
+	parts1 := strings.Replace(proxy, ":", ",", -1)
+	fmt.Println(proxy)
+	parts := strings.Split(parts1, ",")
 	if len(parts) != 4 {
 		fmt.Println("Неверный формат строки прокси")
 		os.Exit(1)
 	}
+	// 148.129.126.60:9375:a704Ddn:gY21pM7
+	// 185.181.244.152:3000,tYcQJm91,Etw7MVvN
 
 	proxyUrl := fmt.Sprintf("http://%s:%s@%s:%s", parts[2], parts[3], parts[0], parts[1])
 

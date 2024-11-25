@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"bufio"
 	"encoding/csv"
 	"fmt"
 	"log"
@@ -61,7 +60,7 @@ func OpenParts(filename string) []domain.Part {
 		log.Fatal(err)
 	}
 	var parts []domain.Part
-	for _, record := range records {
+	for _, record := range records[1:] {
 		var part domain.Part
 		part.Oem = record[0]
 		part.PartNumber = record[1]
@@ -69,6 +68,28 @@ func OpenParts(filename string) []domain.Part {
 
 	}
 	return parts
+
+}
+func CheckHeader(filename string) bool {
+	file, err := os.Open(fmt.Sprintf("internal/files/%s", filename))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	// Создаем новый CSV ридер
+	reader := csv.NewReader(file)
+	reader.Comma = ';' // Устанавливаем разделитель на ';'
+
+	// Читаем все строки в двумерный массив строк
+	records, err := reader.ReadAll()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if records != nil {
+		return false
+	}
+	return true
 
 }
 func WriteModelsToCSV(models []domain.Model, filename string, writeHeader bool) error {
@@ -147,20 +168,23 @@ func RandomizeMilliseconds(value int) time.Duration {
 	return time.Duration(randomMilliseconds) * time.Millisecond
 }
 func ReadProxies() ([]string, error) {
-	file, err := os.Open("internal/files/proxies.txt")
+	file, err := os.Open("internal/files/proxies.csv")
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
+	reader := csv.NewReader(file)
+	reader.Comma = ',' // Устанавливаем разделитель на ';'
 
-	var lines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+	// Читаем все строки в двумерный массив строк
+	records, err := reader.ReadAll()
+	if err != nil {
+		log.Fatal(err)
 	}
+	var lines []string
+	for _, record := range records[1:] {
+		lines = append(lines, record[0]+":"+record[1]+":"+record[2])
 
-	if err := scanner.Err(); err != nil {
-		return nil, err
 	}
 
 	return lines, nil

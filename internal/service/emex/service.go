@@ -121,11 +121,13 @@ func (s *service) parceTwice(detailNum string, locationId string, proxy string) 
 	return res, nil
 
 }
+
 func (s *service) ParseData() {
 	logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer logFile.Close()
 	log.SetOutput(logFile)
-	err = utils.WriteModelsToCSV(nil, "emex.csv", true)
+	header := utils.CheckHeader("emex.csv")
+	err = utils.WriteModelsToCSV(nil, "emex.csv", header)
 	if err != nil {
 		log.Panicln("Ну не повезло ")
 	}
