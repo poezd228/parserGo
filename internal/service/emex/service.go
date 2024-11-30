@@ -5,14 +5,17 @@ import (
 	"encoding/json"
 	errors2 "errors"
 	"fmt"
-	"github.com/schollz/progressbar/v3"
 	"io"
 	"log"
 	"os"
 	"parser/internal/domain"
 	"parser/internal/errors"
 	"parser/internal/utils"
+	"strconv"
 	"time"
+
+	"github.com/joho/godotenv"
+	"github.com/schollz/progressbar/v3"
 )
 
 type service struct {
@@ -122,7 +125,27 @@ func (s *service) parceTwice(detailNum string, locationId string, proxy string) 
 
 }
 
+func (s *service) DoUntilSuccess(url string, proxy string, visitorId string, attempts int) (domain.Result, errors.ServiceError) {
+	if attempts <= 3 {
+		res, err := s.getMainData(url, proxy, visitorId)
+		if err != nil {
+			time.Sleep(30)
+			return s.DoUntilSuccess(url, proxy, visitorId, attempts+1)
+		} else {
+			return res, nil
+		}
+	} else {
+		return domain.Result{}, errors.BadRequest(fmt.Errorf("Харрее "))
+	}
+
+}
+
 func (s *service) ParseData() {
+	err := godotenv.Load(".env")
+	delay, err := strconv.Atoi(os.Getenv("REQUEST_DELAY"))
+	if err != nil {
+		log.Panicln("Error parsing REQUEST_DELAY:", err)
+	}
 	logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer logFile.Close()
 	log.SetOutput(logFile)
@@ -136,6 +159,7 @@ func (s *service) ParseData() {
 		proxy := utils.ChooseRandom(s.proxy).(string)
 		res, er := s.parceTwice(detail.PartNumber, utils.ChooseRandom(s.locationId).(string), proxy)
 		if er != nil && errors2.Is(er.Error(), context.DeadlineExceeded) {
+
 			_, _ = s.getVisitorId(proxy)
 			log.Println(er)
 			err = utils.WriteModelsToCSV([]domain.Model{
@@ -157,12 +181,30 @@ func (s *service) ParseData() {
 			}
 
 		}
-		e := utils.WriteModelsToCSV(res.ToModel(detail), "emex.csv", false)
-		if e != nil {
-			log.Print(err)
+		for _, makes := range res.SearchResult.Makes.List {
+			proxy := utils.ChooseRandom(s.proxy).(string)
+			vistor, err := s.getVisitorId(proxy)
+			time.Sleep(utils.RandomizeMilliseconds(delay))
+			if err != nil {
+				log.Print(err)
+				result, err := s.DoUntilSuccess(makes.URL, proxy, "", 0)
+				if err != nil {
+					log.Print(err)
+
+				} else {
+					utils.WriteModelsToCSV(result.ToModel(detail), "emex.csv", false)
+				}
+			}
+			result, err := s.DoUntilSuccess(makes.URL, proxy, vistor.Version, 0)
+			e := utils.WriteModelsToCSV(result.ToModel(detail), "emex.csv", false)
+			if e != nil {
+				log.Print(e)
+			}
+			time.Sleep(utils.RandomizeMilliseconds(delay))
+
 		}
 
-		time.Sleep(utils.RandomizeMilliseconds(200))
+		time.Sleep(utils.RandomizeMilliseconds(delay))
 
 		bar.Add(1)
 

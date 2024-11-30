@@ -3,20 +3,20 @@ package utils
 import (
 	"context"
 	"fmt"
-	"github.com/corpix/uarand"
-	"github.com/google/uuid"
 	"net/http"
 	"net/url"
 	"os"
 	errors2 "parser/internal/errors"
 	"strings"
 	"time"
+
+	"github.com/corpix/uarand"
+	"github.com/google/uuid"
 )
 
 func MakeJsonRequestVisitor(ctx context.Context, link string, proxy string, visitorId string) (http.Response, errors2.ServiceError) {
 	// Заменяем центральное двоеточие на @
 	parts1 := strings.Replace(proxy, ":", ",", -1)
-	fmt.Println(proxy)
 	parts := strings.Split(parts1, ",")
 	if len(parts) != 4 {
 		fmt.Println("Неверный формат строки прокси")
