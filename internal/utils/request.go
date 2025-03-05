@@ -15,7 +15,10 @@ import (
 
 func MakeJsonRequestVisitor(ctx context.Context, link string, proxy string, visitorId string) (http.Response, errors2.ServiceError) {
 	// Заменяем центральное двоеточие на @
+
+	proxy = strings.Replace(proxy, ",", ":", -1)
 	parts := strings.Split(proxy, ":")
+
 	if len(parts) != 4 {
 		fmt.Println("Неверный формат строки прокси")
 		os.Exit(1)
@@ -133,7 +136,6 @@ func MakeJsonRequest(ctx context.Context, link string, proxy string) (http.Respo
 func MakeJsonRequestPost(ctx context.Context, link string, proxy string) (http.Response, errors2.ServiceError) {
 	// Заменяем центральное двоеточие на @
 	proxy = strings.Replace(proxy, ",", ":", -1)
-	fmt.Println(proxy)
 	parts := strings.Split(proxy, ":")
 	if len(parts) != 4 {
 		fmt.Println("Неверный формат строки прокси")

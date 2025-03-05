@@ -132,6 +132,7 @@ func (s *service) ParseData() {
 	bar := progressbar.Default(int64(len(s.parts)))
 	for _, detail := range s.parts {
 		proxy := utils.ChooseRandom(s.proxy).(string)
+		log.Println(proxy)
 		res, er := s.parceTwice(detail.PartNumber, utils.ChooseRandom(s.locationId).(string), proxy)
 		if er != nil && errors2.Is(er.Error(), context.DeadlineExceeded) {
 			_, _ = s.getVisitorId(proxy)
