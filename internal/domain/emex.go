@@ -213,7 +213,7 @@ type Config struct {
 	Maintenance2Enabled bool               `json:"maintenance2Enabled"`
 }
 
-func (r *Result) ToModel(part Part) []Model {
+func (r *Result) ToModel(part Part) ([]Model, error) {
 	var models []Model
 	for _, offer := range r.SearchResult.Originals {
 		for _, data := range offer.Offers {
@@ -230,6 +230,9 @@ func (r *Result) ToModel(part Part) []Model {
 
 		}
 	}
+	if r.SearchResult.Analogs == nil {
+		return nil, fmt.Errorf("Ну нет и нет")
+	}
 	for _, offer := range r.SearchResult.Analogs {
 		for _, data := range offer.Offers {
 			model := Model{
@@ -244,6 +247,9 @@ func (r *Result) ToModel(part Part) []Model {
 			models = append(models, model)
 
 		}
+	}
+	if r.SearchResult.Replacements == nil {
+		return nil, fmt.Errorf("Ну нет и нет")
 	}
 	for _, offer := range r.SearchResult.Replacements {
 		for _, data := range offer.Offers {
@@ -260,6 +266,6 @@ func (r *Result) ToModel(part Part) []Model {
 
 		}
 	}
-	return models
+	return models, nil
 
 }

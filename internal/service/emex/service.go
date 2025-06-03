@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	errors2 "errors"
 	"fmt"
-	"github.com/schollz/progressbar/v3"
 	"io"
 	"log"
 	"os"
@@ -13,6 +12,8 @@ import (
 	"parser/internal/errors"
 	"parser/internal/utils"
 	"time"
+
+	"github.com/schollz/progressbar/v3"
 )
 
 type service struct {
@@ -156,9 +157,21 @@ func (s *service) ParseData() {
 			}
 
 		}
-		e := utils.WriteModelsToCSV(res.ToModel(detail), "emex.csv", false)
-		if e != nil {
-			log.Print(err)
+		model, err := res.ToModel(detail)
+		if err != nil {
+			log.Println(err)
+			err = utils.WriteModelsToCSV([]domain.Model{
+				{OriginalManufacturer: detail.Oem,
+					OriginalPartNumber: detail.PartNumber},
+			}, "skipped.csv", false)
+			if err != nil {
+				log.Print(err)
+			}
+		} else {
+			e := utils.WriteModelsToCSV(model, "emex.csv", false)
+			if e != nil {
+				log.Print(err)
+			}
 		}
 
 		time.Sleep(utils.RandomizeMilliseconds(200))
