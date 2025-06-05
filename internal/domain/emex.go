@@ -230,9 +230,9 @@ func (r *Result) ToModel(part Part) ([]Model, error) {
 
 		}
 	}
-	if r.SearchResult.Analogs == nil {
-		return nil, fmt.Errorf("Ну нет и нет")
-	}
+	// if r.SearchResult.Analogs == nil {
+	// 	return nil, fmt.Errorf("Ну нет и нет")
+	// }
 	for _, offer := range r.SearchResult.Analogs {
 		for _, data := range offer.Offers {
 			model := Model{
@@ -248,9 +248,9 @@ func (r *Result) ToModel(part Part) ([]Model, error) {
 
 		}
 	}
-	if r.SearchResult.Replacements == nil {
-		return nil, fmt.Errorf("Ну нет и нет")
-	}
+	// if r.SearchResult.Replacements == nil {
+	// 	return nil, fmt.Errorf("Ну нет и нет")
+	// }
 	for _, offer := range r.SearchResult.Replacements {
 		for _, data := range offer.Offers {
 			model := Model{
@@ -266,6 +266,7 @@ func (r *Result) ToModel(part Part) ([]Model, error) {
 
 		}
 	}
+	fmt.Println(len(models))
 	return models, nil
 
 }

@@ -10,7 +10,7 @@ type dependencies struct {
 }
 
 type Dependencies interface {
-	FillDeps(proxies []string, parts []domain.Part, locations []string)
+	FillDeps(proxies []string, parts []domain.Part, locations []string, locationCoords map[string][]string)
 	Run()
 }
 
@@ -19,8 +19,8 @@ func NewDependencies() Dependencies {
 
 }
 
-func (d *dependencies) FillDeps(proxies []string, parts []domain.Part, locations []string) {
-	d.NewEmexService(proxies, parts, locations)
+func (d *dependencies) FillDeps(proxies []string, parts []domain.Part, locations []string, locationCoords map[string][]string) {
+	d.NewEmexService(proxies, parts, locations, locationCoords)
 
 }
 func (d *dependencies) Run() {

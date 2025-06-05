@@ -3,14 +3,15 @@ package utils
 import (
 	"context"
 	"fmt"
-	"github.com/corpix/uarand"
-	"github.com/google/uuid"
 	"net/http"
 	"net/url"
 	"os"
 	errors2 "parser/internal/errors"
 	"strings"
 	"time"
+
+	"github.com/corpix/uarand"
+	"github.com/google/uuid"
 )
 
 func MakeJsonRequestVisitor(ctx context.Context, link string, proxy string, visitorId string) (http.Response, errors2.ServiceError) {
@@ -21,7 +22,7 @@ func MakeJsonRequestVisitor(ctx context.Context, link string, proxy string, visi
 
 	if len(parts) != 4 {
 		fmt.Println("Неверный формат строки прокси")
-		os.Exit(1)
+		panic("wrong proxy")
 	}
 
 	proxyUrl := fmt.Sprintf("http://%s:%s@%s:%s", parts[2], parts[3], parts[0], parts[1])
@@ -102,6 +103,7 @@ func MakeJsonRequest(ctx context.Context, link string, proxy string) (http.Respo
 	req.Header.Add("accept-language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
 	//req.Header.Add("cache-control", "no-cache")
 	//req.Header.Add("pragma", "no-cache")
+	req.Header.Add("referer", "https://emex.ru/products/")
 	req.Header.Add("priority", "u=0, i")
 	req.Header.Add("sec-ch-ua-mobile", "?0")
 	req.Header.Add("sec-fetch-dest", "document")

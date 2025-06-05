@@ -17,21 +17,23 @@ import (
 )
 
 type service struct {
-	proxy      []string
-	parts      []domain.Part
-	locationId []string
+	proxy          []string
+	parts          []domain.Part
+	locationId     []string
+	locationCoords map[string][]string
 }
 
 type Service interface {
 	ParseData()
 }
 
-func NewService(proxy []string, detailNumbers []domain.Part, locationId []string) Service {
+func NewService(proxy []string, detailNumbers []domain.Part, locationId []string, locationCords map[string][]string) Service {
 
 	return &service{
-		proxy:      proxy,
-		parts:      detailNumbers,
-		locationId: locationId,
+		locationCoords: locationCords,
+		proxy:          proxy,
+		parts:          detailNumbers,
+		locationId:     locationId,
 	}
 
 }
@@ -62,7 +64,7 @@ func (s *service) getCommonData(detailNum string, locationId string, proxy strin
 	var result domain.Result
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	link := fmt.Sprintf("https://emex.ru/api/search/search?detailNum=%s&locationId=%s", detailNum, locationId)
+	link := fmt.Sprintf("https://emex.ru/api/search/search?detailNum=%s&locationId=%s&showAll=true", detailNum, locationId)
 
 	res, err := utils.MakeJsonRequest(ctx, link, proxy)
 	if err != nil {
@@ -77,6 +79,7 @@ func (s *service) getCommonData(detailNum string, locationId string, proxy strin
 	if e != nil {
 		return domain.Result{}, errors.UnableToUnmarshall(e)
 	}
+
 	return result, nil
 }
 func (s *service) getMainData(url string, proxy string, visitorId string) (domain.Result, errors.ServiceError) {
@@ -126,6 +129,7 @@ func (s *service) ParseData() {
 	logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer logFile.Close()
 	log.SetOutput(logFile)
+	// log.Default().Println("daun")
 	err = utils.WriteModelsToCSV(nil, "emex.csv", true)
 	if err != nil {
 		log.Panicln("Ну не повезло ")
@@ -133,48 +137,50 @@ func (s *service) ParseData() {
 	bar := progressbar.Default(int64(len(s.parts)))
 	for _, detail := range s.parts {
 		proxy := utils.ChooseRandom(s.proxy).(string)
-		log.Println(proxy)
-		res, er := s.parceTwice(detail.PartNumber, utils.ChooseRandom(s.locationId).(string), proxy)
-		if er != nil && errors2.Is(er.Error(), context.DeadlineExceeded) {
-			_, _ = s.getVisitorId(proxy)
-			log.Println(er)
-			err = utils.WriteModelsToCSV([]domain.Model{
-				{OriginalManufacturer: detail.Oem,
-					OriginalPartNumber: detail.PartNumber},
-			}, "skipped.csv", false)
+		for _, location := range s.locationId {
+			res, er := s.parceTwice(detail.PartNumber, location, proxy)
+			if er != nil && errors2.Is(er.Error(), context.DeadlineExceeded) {
+				_, _ = s.getVisitorId(proxy)
+				log.Println(er)
+				err = utils.WriteModelsToCSV([]domain.Model{
+					{OriginalManufacturer: detail.Oem,
+						OriginalPartNumber: detail.PartNumber},
+				}, "skipped.csv", false)
+				if err != nil {
+					log.Print(err)
+				}
+
+			} else if er != nil {
+				log.Print(er)
+				err = utils.WriteModelsToCSV([]domain.Model{
+					{OriginalManufacturer: detail.Oem,
+						OriginalPartNumber: detail.PartNumber},
+				}, "notfound.csv", false)
+				if err != nil {
+					log.Print(err)
+				}
+
+			}
+			model, err := res.ToModel(detail)
 			if err != nil {
-				log.Print(err)
+				log.Println(err)
+				err = utils.WriteModelsToCSV([]domain.Model{
+					{OriginalManufacturer: detail.Oem,
+						OriginalPartNumber: detail.PartNumber},
+				}, "skipped.csv", false)
+				if err != nil {
+					log.Print(err)
+				}
+			} else {
+				e := utils.WriteModelsToCSV(model, "emex.csv", false)
+				if e != nil {
+					log.Print(err)
+				}
 			}
 
-		} else if er != nil {
-			log.Print(er)
-			err = utils.WriteModelsToCSV([]domain.Model{
-				{OriginalManufacturer: detail.Oem,
-					OriginalPartNumber: detail.PartNumber},
-			}, "notfound.csv", false)
-			if err != nil {
-				log.Print(err)
-			}
+			time.Sleep(utils.RandomizeMilliseconds(200))
 
 		}
-		model, err := res.ToModel(detail)
-		if err != nil {
-			log.Println(err)
-			err = utils.WriteModelsToCSV([]domain.Model{
-				{OriginalManufacturer: detail.Oem,
-					OriginalPartNumber: detail.PartNumber},
-			}, "skipped.csv", false)
-			if err != nil {
-				log.Print(err)
-			}
-		} else {
-			e := utils.WriteModelsToCSV(model, "emex.csv", false)
-			if e != nil {
-				log.Print(err)
-			}
-		}
-
-		time.Sleep(utils.RandomizeMilliseconds(200))
 
 		bar.Add(1)
 
