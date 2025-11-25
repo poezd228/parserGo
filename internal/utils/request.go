@@ -15,30 +15,41 @@ import (
 )
 
 func MakeJsonRequestVisitor(ctx context.Context, link string, proxy string, visitorId string) (http.Response, errors2.ServiceError) {
-	// Заменяем центральное двоеточие на @
+	var client http.Client
 
-	proxy = strings.Replace(proxy, ",", ":", -1)
-	parts := strings.Split(proxy, ":")
+	if proxy == "" {
+		// Если прокси пустая строка, создаем клиент без прокси
+		client = http.Client{
+			Transport: &http.Transport{
+				MaxIdleConns:    0,
+				MaxConnsPerHost: 0,
+				IdleConnTimeout: 3 * time.Second},
+		}
+	} else {
+		// Заменяем центральное двоеточие на @
+		proxy = strings.Replace(proxy, ",", ":", -1)
+		parts := strings.Split(proxy, ":")
 
-	if len(parts) != 4 {
-		fmt.Println("Неверный формат строки прокси")
-		panic("wrong proxy")
-	}
+		if len(parts) != 4 {
+			fmt.Println("Неверный формат строки прокси")
+			panic("wrong proxy")
+		}
 
-	proxyUrl := fmt.Sprintf("http://%s:%s@%s:%s", parts[2], parts[3], parts[0], parts[1])
+		proxyUrl := fmt.Sprintf("http://%s:%s@%s:%s", parts[2], parts[3], parts[0], parts[1])
 
-	Url, err := url.Parse(proxyUrl)
+		Url, err := url.Parse(proxyUrl)
 
-	if err != nil {
+		if err != nil {
 
-		return http.Response{}, errors2.WrongProxyUrl(err)
-	}
-	client := http.Client{
-		Transport: &http.Transport{
-			MaxIdleConns:    0,
-			MaxConnsPerHost: 0,
-			Proxy:           http.ProxyURL(Url),
-			IdleConnTimeout: 3 * time.Second},
+			return http.Response{}, errors2.WrongProxyUrl(err)
+		}
+		client = http.Client{
+			Transport: &http.Transport{
+				MaxIdleConns:    0,
+				MaxConnsPerHost: 0,
+				Proxy:           http.ProxyURL(Url),
+				IdleConnTimeout: 3 * time.Second},
+		}
 	}
 	req, err := http.NewRequest("GET", link, nil)
 	req.Header.Add("accept-language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
@@ -76,28 +87,40 @@ func MakeJsonRequestVisitor(ctx context.Context, link string, proxy string, visi
 }
 
 func MakeJsonRequest(ctx context.Context, link string, proxy string) (http.Response, errors2.ServiceError) {
-	// Заменяем центральное двоеточие на @
-	proxy = strings.Replace(proxy, ",", ":", -1)
-	parts := strings.Split(proxy, ":")
-	if len(parts) != 4 {
-		fmt.Println("Неверный формат строки прокси")
-		os.Exit(1)
-	}
+	var client http.Client
 
-	proxyUrl := fmt.Sprintf("http://%s:%s@%s:%s", parts[2], parts[3], parts[0], parts[1])
+	if proxy == "" {
+		// Если прокси пустая строка, создаем клиент без прокси
+		client = http.Client{
+			Transport: &http.Transport{
+				MaxIdleConns:    0,
+				MaxConnsPerHost: 0,
+				IdleConnTimeout: 3 * time.Second},
+		}
+	} else {
+		// Заменяем центральное двоеточие на @
+		proxy = strings.Replace(proxy, ",", ":", -1)
+		parts := strings.Split(proxy, ":")
+		if len(parts) != 4 {
+			fmt.Println("Неверный формат строки прокси")
+			os.Exit(1)
+		}
 
-	Url, err := url.Parse(proxyUrl)
+		proxyUrl := fmt.Sprintf("http://%s:%s@%s:%s", parts[2], parts[3], parts[0], parts[1])
 
-	if err != nil {
+		Url, err := url.Parse(proxyUrl)
 
-		return http.Response{}, errors2.WrongProxyUrl(err)
-	}
-	client := http.Client{
-		Transport: &http.Transport{
-			MaxIdleConns:    0,
-			MaxConnsPerHost: 0,
-			Proxy:           http.ProxyURL(Url),
-			IdleConnTimeout: 3 * time.Second},
+		if err != nil {
+
+			return http.Response{}, errors2.WrongProxyUrl(err)
+		}
+		client = http.Client{
+			Transport: &http.Transport{
+				MaxIdleConns:    0,
+				MaxConnsPerHost: 0,
+				Proxy:           http.ProxyURL(Url),
+				IdleConnTimeout: 3 * time.Second},
+		}
 	}
 	req, err := http.NewRequest("GET", link, nil)
 	req.Header.Add("accept-language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
@@ -136,28 +159,40 @@ func MakeJsonRequest(ctx context.Context, link string, proxy string) (http.Respo
 }
 
 func MakeJsonRequestPost(ctx context.Context, link string, proxy string) (http.Response, errors2.ServiceError) {
-	// Заменяем центральное двоеточие на @
-	proxy = strings.Replace(proxy, ",", ":", -1)
-	parts := strings.Split(proxy, ":")
-	if len(parts) != 4 {
-		fmt.Println("Неверный формат строки прокси")
-		os.Exit(1)
-	}
+	var client http.Client
 
-	proxyUrl := fmt.Sprintf("http://%s:%s@%s:%s", parts[2], parts[3], parts[0], parts[1])
+	if proxy == "" {
+		// Если прокси пустая строка, создаем клиент без прокси
+		client = http.Client{
+			Transport: &http.Transport{
+				MaxIdleConns:    0,
+				MaxConnsPerHost: 0,
+				IdleConnTimeout: 3 * time.Second},
+		}
+	} else {
+		// Заменяем центральное двоеточие на @
+		proxy = strings.Replace(proxy, ",", ":", -1)
+		parts := strings.Split(proxy, ":")
+		if len(parts) != 4 {
+			fmt.Println("Неверный формат строки прокси")
+			os.Exit(1)
+		}
 
-	Url, err := url.Parse(proxyUrl)
+		proxyUrl := fmt.Sprintf("http://%s:%s@%s:%s", parts[2], parts[3], parts[0], parts[1])
 
-	if err != nil {
+		Url, err := url.Parse(proxyUrl)
 
-		return http.Response{}, errors2.WrongProxyUrl(err)
-	}
-	client := http.Client{
-		Transport: &http.Transport{
-			MaxIdleConns:    0,
-			MaxConnsPerHost: 0,
-			Proxy:           http.ProxyURL(Url),
-			IdleConnTimeout: 3 * time.Second},
+		if err != nil {
+
+			return http.Response{}, errors2.WrongProxyUrl(err)
+		}
+		client = http.Client{
+			Transport: &http.Transport{
+				MaxIdleConns:    0,
+				MaxConnsPerHost: 0,
+				Proxy:           http.ProxyURL(Url),
+				IdleConnTimeout: 3 * time.Second},
+		}
 	}
 	req, err := http.NewRequest("POST", link, nil)
 	req.Header.Add("accept-language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")

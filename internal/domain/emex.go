@@ -266,7 +266,6 @@ func (r *Result) ToModel(part Part) ([]Model, error) {
 
 		}
 	}
-	fmt.Println(len(models))
 	return models, nil
 
 }
