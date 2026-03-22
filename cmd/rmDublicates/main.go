@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -11,56 +12,70 @@ import (
 )
 
 func main() {
-	// Открываем исходный файл
 	inputFile, err := os.Open("internal/files/emex.csv")
 	if err != nil {
 		log.Fatal("Ошибка открытия файла:", err)
 	}
 	defer inputFile.Close()
 
-	// Читаем CSV
 	reader := csv.NewReader(inputFile)
 	reader.Comma = ';'
+	reader.FieldsPerRecord = -1 // разрешаем разное число колонок
 
-	records, err := reader.ReadAll()
+	// Читаем заголовок
+	header, err := reader.Read()
 	if err != nil {
-		log.Fatal("Ошибка чтения CSV:", err)
+		log.Fatal("Ошибка чтения заголовка:", err)
 	}
 
-	if len(records) == 0 {
-		log.Fatal("Файл пустой")
-	}
+	expectedCols := len(header)
 
-	// Используем map для отслеживания уникальных строк
 	seen := make(map[string]bool)
 	var uniqueRecords [][]string
+	uniqueRecords = append(uniqueRecords, header)
 
-	// Добавляем заголовок
-	uniqueRecords = append(uniqueRecords, records[0])
+	bar := progressbar.Default(-1) // неизвестное количество строк
 
-	// Создаем прогресс-бар
-	bar := progressbar.Default(int64(len(records) - 1))
+	total := 0
+	skipped := 0
 
-	// Обрабатываем остальные строки
-	for i := 1; i < len(records); i++ {
-		// Создаем ключ из всех полей строки
-		key := strings.Join(records[i], "|")
+	for {
+		record, err := reader.Read()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			// ❌ битая строка → пропускаем
+			skipped++
+			continue
+		}
+
+		total++
+
+		// ❌ если количество колонок не совпадает — пропускаем
+		if len(record) != expectedCols {
+			skipped++
+			continue
+		}
+
+		key := strings.Join(record, "|")
 
 		if !seen[key] {
 			seen[key] = true
-			uniqueRecords = append(uniqueRecords, records[i])
+			uniqueRecords = append(uniqueRecords, record)
 		}
+
 		bar.Add(1)
 	}
 
-	// Создаем выходной файл
 	outputFile, err := os.Create("internal/files/emex_removed_dublicates.csv")
 	if err != nil {
 		log.Fatal("Ошибка создания файла:", err)
 	}
 	defer outputFile.Close()
 
-	// Записываем уникальные записи
 	writer := csv.NewWriter(outputFile)
 	writer.Comma = ';'
 
@@ -71,7 +86,8 @@ func main() {
 
 	writer.Flush()
 
-	fmt.Printf("Обработано: %d строк\n", len(records)-1)
-	fmt.Printf("Удалено дубликатов: %d\n", len(records)-len(uniqueRecords))
+	fmt.Printf("Обработано строк: %d\n", total)
+	fmt.Printf("Пропущено битых строк: %d\n", skipped)
+	fmt.Printf("Удалено дубликатов: %d\n", total-len(uniqueRecords)+1)
 	fmt.Printf("Осталось уникальных: %d\n", len(uniqueRecords)-1)
 }
