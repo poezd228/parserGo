@@ -1,6 +1,9 @@
 package domain
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type Result struct {
 	SearchResult SearchResult `json:"searchResult"`
@@ -215,6 +218,7 @@ type Config struct {
 
 func (r *Result) ToModel(part Part) ([]Model, error) {
 	var models []Model
+	parsedAt := time.Now().Format("02.01.2006 15:04")
 	for _, offer := range r.SearchResult.Originals {
 		for _, data := range offer.Offers {
 			model := Model{
@@ -225,6 +229,7 @@ func (r *Result) ToModel(part Part) ([]Model, error) {
 				PartDescription:      data.Data.DetailName,
 				Price:                fmt.Sprintf("%.2f %s", data.Price.Value, data.Price.Symbol),
 				DeliveryTime:         fmt.Sprintf("%d %s", data.Delivery.Value, data.Delivery.Units),
+				ParsedAt:             parsedAt,
 			}
 			models = append(models, model)
 
@@ -243,6 +248,7 @@ func (r *Result) ToModel(part Part) ([]Model, error) {
 				PartDescription:      data.Data.DetailName,
 				Price:                fmt.Sprintf("%.2f %s", data.Price.Value, data.Price.Symbol),
 				DeliveryTime:         fmt.Sprintf("%d %s", data.Delivery.Value, data.Delivery.Units),
+				ParsedAt:             parsedAt,
 			}
 			models = append(models, model)
 
@@ -261,6 +267,7 @@ func (r *Result) ToModel(part Part) ([]Model, error) {
 				PartDescription:      data.Data.DetailName,
 				Price:                fmt.Sprintf("%.2f", data.Price.Value),
 				DeliveryTime:         fmt.Sprintf("%d %s", data.Delivery.Value, data.Delivery.Units),
+				ParsedAt:             parsedAt,
 			}
 			models = append(models, model)
 

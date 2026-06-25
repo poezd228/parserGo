@@ -8,6 +8,7 @@ type Model struct {
 	PartDescription      string
 	Price                string
 	DeliveryTime         string
+	ParsedAt             string
 }
 type Part struct {
 	Oem        string

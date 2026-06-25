@@ -85,7 +85,7 @@ func WriteModelsToCSV(models []domain.Model, filename string, writeHeader bool) 
 
 	// Записываем заголовки только в случае, если указано writeHeader
 	if writeHeader {
-		header := []string{"Оригинальный производитель", "Оригинальный номер части", "Производитель Части", "Номер Части", "Описание Части", "Цена", "Срок поставки"}
+		header := []string{"Оригинальный производитель", "Оригинальный номер части", "Производитель Части", "Номер Части", "Описание Части", "Цена", "Срок поставки", "Дата и время парсинга"}
 		if err := writer.Write(header); err != nil {
 			return err
 		}
@@ -102,6 +102,7 @@ func WriteModelsToCSV(models []domain.Model, filename string, writeHeader bool) 
 				model.PartDescription,
 				model.Price,
 				model.DeliveryTime,
+				model.ParsedAt,
 			}
 			if err := writer.Write(record); err != nil {
 				return err
