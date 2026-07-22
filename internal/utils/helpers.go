@@ -71,6 +71,40 @@ func OpenParts(filename string) []domain.Part {
 	return parts
 
 }
+
+// OpenAutopiterParts читает CSV в формате partnumber;oem;name
+func OpenAutopiterParts(filename string) []domain.Part {
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = ';'
+
+	records, err := reader.ReadAll()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var parts []domain.Part
+	for i, record := range records {
+		if len(record) < 2 {
+			continue
+		}
+		if i == 0 && strings.EqualFold(strings.TrimSpace(record[0]), "partnumber") {
+			continue
+		}
+
+		parts = append(parts, domain.Part{
+			PartNumber: record[0],
+			Oem:        record[1],
+		})
+	}
+
+	return parts
+}
 func WriteModelsToCSV(models []domain.Model, filename string, writeHeader bool) error {
 
 	file, err := os.OpenFile(fmt.Sprintf("internal/files/%s", filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
