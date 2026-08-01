@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"os"
@@ -51,25 +52,30 @@ func OpenParts(filename string) []domain.Part {
 	}
 	defer file.Close()
 
-	// Создаем новый CSV ридер
 	reader := csv.NewReader(file)
-	reader.Comma = ';' // Устанавливаем разделитель на ';'
+	reader.Comma = ';'
+	reader.FieldsPerRecord = -1
 
-	// Читаем все строки в двумерный массив строк
-	records, err := reader.ReadAll()
-	if err != nil {
-		log.Fatal(err)
-	}
 	var parts []domain.Part
-	for _, record := range records {
-		var part domain.Part
-		part.Oem = record[0]
-		part.PartNumber = record[1]
-		parts = append(parts, part)
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(record) < 2 {
+			continue
+		}
 
+		parts = append(parts, domain.Part{
+			Oem:        record[0],
+			PartNumber: record[1],
+		})
 	}
-	return parts
 
+	return parts
 }
 
 // OpenAutopiterParts читает CSV в формате partnumber;oem;name
@@ -82,19 +88,26 @@ func OpenAutopiterParts(filename string) []domain.Part {
 
 	reader := csv.NewReader(file)
 	reader.Comma = ';'
-
-	records, err := reader.ReadAll()
-	if err != nil {
-		log.Fatal(err)
-	}
+	reader.FieldsPerRecord = -1
 
 	var parts []domain.Part
-	for i, record := range records {
+	first := true
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
 		if len(record) < 2 {
 			continue
 		}
-		if i == 0 && strings.EqualFold(strings.TrimSpace(record[0]), "partnumber") {
-			continue
+		if first {
+			first = false
+			if strings.EqualFold(strings.TrimSpace(record[0]), "partnumber") {
+				continue
+			}
 		}
 
 		parts = append(parts, domain.Part{
