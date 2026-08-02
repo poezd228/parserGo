@@ -43,7 +43,10 @@ type AutopiterProperty struct {
 	Value string `json:"value"`
 }
 
-func NewAutopiterSearchRequest(partNumber string) AutopiterSearchRequest {
+func NewAutopiterSearchRequest(partNumber string, top int) AutopiterSearchRequest {
+	if top <= 0 {
+		top = 12
+	}
 	return AutopiterSearchRequest{
 		Meta: AutopiterSearchMeta{
 			FrontendType: 2,
@@ -51,7 +54,7 @@ func NewAutopiterSearchRequest(partNumber string) AutopiterSearchRequest {
 			RouteID:      "MAIN_PAGE",
 		},
 		SearchValue: partNumber,
-		Top:         12,
+		Top:         top,
 	}
 }
 

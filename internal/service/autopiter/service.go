@@ -1,4 +1,4 @@
-package autopiller
+package autopiter
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"parser/internal/config/autopiter"
 	"parser/internal/domain"
 	"parser/internal/errors"
 	"parser/internal/utils"
@@ -15,23 +16,19 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-const (
-	outputCSV  = "autopiter.csv"
-	skippedCSV = "autopiter_skipped.csv"
-	notFoundCSV = "autopiter_notfound.csv"
-)
-
 type Service interface {
 	ParseData()
 }
 
 type service struct {
+	cfg   *autopiter.Config
 	proxy []string
 	parts []domain.Part
 }
 
-func NewService(proxy []string, parts []domain.Part) Service {
+func NewService(cfg *autopiter.Config, proxy []string, parts []domain.Part) Service {
 	return &service{
+		cfg:   cfg,
 		proxy: proxy,
 		parts: parts,
 	}
@@ -40,10 +37,11 @@ func NewService(proxy []string, parts []domain.Part) Service {
 func (s *service) search(partNumber string, proxy string) (domain.AutopiterResponse, errors.ServiceError) {
 	var result domain.AutopiterResponse
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	timeout := time.Duration(s.cfg.RequestTimeoutSec) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	requestBody := domain.NewAutopiterSearchRequest(partNumber)
+	requestBody := domain.NewAutopiterSearchRequest(partNumber, s.cfg.SearchTop)
 	payload, _ := json.Marshal(requestBody)
 	log.Printf("search request: partNumber=%q proxy=%q body=%s", partNumber, proxy, string(payload))
 
@@ -88,14 +86,14 @@ func (s *service) searchWithRetry(partNumber string, proxy string) (domain.Autop
 }
 
 func (s *service) ParseData() {
-	logFile, err := os.OpenFile("autopiter.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile, err := os.OpenFile(s.cfg.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Panicln(err)
 	}
 	defer logFile.Close()
-	log.SetOutput(io.MultiWriter(os.Stdout, logFile))
+	log.SetOutput(logFile)
 
-	if err = utils.WriteModelsToCSV(nil, outputCSV, true); err != nil {
+	if err = utils.WriteModelsToCSV(nil, s.cfg.OutputCSV, true); err != nil {
 		log.Panicln("не удалось создать csv")
 	}
 
@@ -116,7 +114,7 @@ func (s *service) ParseData() {
 					OriginalManufacturer: detail.Oem,
 					OriginalPartNumber:   detail.PartNumber,
 				},
-			}, skippedCSV, false); writeErr != nil {
+			}, s.cfg.SkippedCSV, false); writeErr != nil {
 				log.Print(writeErr)
 			}
 		} else if svcErr != nil {
@@ -126,7 +124,7 @@ func (s *service) ParseData() {
 					OriginalManufacturer: detail.Oem,
 					OriginalPartNumber:   detail.PartNumber,
 				},
-			}, notFoundCSV, false); writeErr != nil {
+			}, s.cfg.NotFoundCSV, false); writeErr != nil {
 				log.Print(writeErr)
 			}
 		}
@@ -139,14 +137,14 @@ func (s *service) ParseData() {
 					OriginalManufacturer: detail.Oem,
 					OriginalPartNumber:   detail.PartNumber,
 				},
-			}, notFoundCSV, false); writeErr != nil {
+			}, s.cfg.NotFoundCSV, false); writeErr != nil {
 				log.Print(writeErr)
 			}
-		} else if writeErr := utils.WriteModelsToCSV(models, outputCSV, false); writeErr != nil {
+		} else if writeErr := utils.WriteModelsToCSV(models, s.cfg.OutputCSV, false); writeErr != nil {
 			log.Print(writeErr)
 		}
 
-		time.Sleep(utils.RandomizeMilliseconds(200))
+		time.Sleep(utils.RandomizeMilliseconds(s.cfg.PauseMs))
 		bar.Add(1)
 	}
 }

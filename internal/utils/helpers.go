@@ -76,10 +76,8 @@ func openPartsCSV(filename string) []domain.Part {
 	}
 
 	partIdx, oemIdx := resolvePartColumns(header)
-	log.Printf("csv columns: partnumber=%d oem=%d header=%v", partIdx, oemIdx, header)
 
 	var parts []domain.Part
-	line := 1
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
@@ -88,10 +86,8 @@ func openPartsCSV(filename string) []domain.Part {
 		if err != nil {
 			log.Fatal(err)
 		}
-		line++
 
 		if len(record) <= partIdx || len(record) <= oemIdx {
-			log.Printf("skip line %d: not enough columns: %v", line, record)
 			continue
 		}
 
@@ -107,7 +103,6 @@ func openPartsCSV(filename string) []domain.Part {
 		})
 	}
 
-	log.Printf("csv loaded: %d parts from %s", len(parts), filename)
 	return parts
 }
 
