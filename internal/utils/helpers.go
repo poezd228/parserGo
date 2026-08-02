@@ -56,6 +56,11 @@ func OpenParts(filename string) []domain.Part {
 	reader.Comma = ';'
 	reader.FieldsPerRecord = -1
 
+	// пропускаем заголовок на нулевой строке
+	if _, err := reader.Read(); err != nil && err != io.EOF {
+		log.Fatal(err)
+	}
+
 	var parts []domain.Part
 	for {
 		record, err := reader.Read()
@@ -90,8 +95,12 @@ func OpenAutopiterParts(filename string) []domain.Part {
 	reader.Comma = ';'
 	reader.FieldsPerRecord = -1
 
+	// пропускаем заголовок на нулевой строке
+	if _, err := reader.Read(); err != nil && err != io.EOF {
+		log.Fatal(err)
+	}
+
 	var parts []domain.Part
-	first := true
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
@@ -102,12 +111,6 @@ func OpenAutopiterParts(filename string) []domain.Part {
 		}
 		if len(record) < 2 {
 			continue
-		}
-		if first {
-			first = false
-			if strings.EqualFold(strings.TrimSpace(record[0]), "partnumber") {
-				continue
-			}
 		}
 
 		parts = append(parts, domain.Part{
