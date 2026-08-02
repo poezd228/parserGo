@@ -11,6 +11,6 @@ type Model struct {
 	ParsedAt             string
 }
 type Part struct {
-	Oem        string
 	PartNumber string
+	Oem        string
 }

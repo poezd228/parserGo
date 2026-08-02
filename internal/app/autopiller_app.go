@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"parser/internal/domain"
 	"parser/internal/service/autopiller"
 	"parser/internal/utils"
 )
@@ -40,7 +39,7 @@ func readAutopillerProxies() []string {
 func (a *autopillerApp) Start() {
 	proxies := readAutopillerProxies()
 	parts := utils.OpenAutopiterParts("internal/files/parts.csv")
-	fmt.Println([]domain.Part{parts[0]})
-	a.service = autopiller.NewService(proxies, []domain.Part{parts[0]})
+	fmt.Printf("loaded %d parts from csv, search by partnumber (first=%q)\n", len(parts), parts[0].PartNumber)
+	a.service = autopiller.NewService(proxies, parts)
 	a.service.ParseData()
 }

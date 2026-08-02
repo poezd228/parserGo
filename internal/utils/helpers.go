@@ -46,45 +46,15 @@ func ChooseRandom(a interface{}) interface{} {
 }
 
 func OpenParts(filename string) []domain.Part {
-	file, err := os.Open(filename)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	reader := csv.NewReader(file)
-	reader.Comma = ';'
-	reader.FieldsPerRecord = -1
-
-	// пропускаем заголовок на нулевой строке
-	if _, err := reader.Read(); err != nil && err != io.EOF {
-		log.Fatal(err)
-	}
-
-	var parts []domain.Part
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Fatal(err)
-		}
-		if len(record) < 2 {
-			continue
-		}
-
-		parts = append(parts, domain.Part{
-			Oem:        record[0],
-			PartNumber: record[1],
-		})
-	}
-
-	return parts
+	return openPartsCSV(filename)
 }
 
 // OpenAutopiterParts читает CSV в формате partnumber;oem;name
 func OpenAutopiterParts(filename string) []domain.Part {
+	return openPartsCSV(filename)
+}
+
+func openPartsCSV(filename string) []domain.Part {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
@@ -94,13 +64,22 @@ func OpenAutopiterParts(filename string) []domain.Part {
 	reader := csv.NewReader(file)
 	reader.Comma = ';'
 	reader.FieldsPerRecord = -1
+	reader.LazyQuotes = true
+	reader.TrimLeadingSpace = true
 
-	// пропускаем заголовок на нулевой строке
-	if _, err := reader.Read(); err != nil && err != io.EOF {
+	header, err := reader.Read()
+	if err == io.EOF {
+		return nil
+	}
+	if err != nil {
 		log.Fatal(err)
 	}
 
+	partIdx, oemIdx := resolvePartColumns(header)
+	log.Printf("csv columns: partnumber=%d oem=%d header=%v", partIdx, oemIdx, header)
+
 	var parts []domain.Part
+	line := 1
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
@@ -109,17 +88,48 @@ func OpenAutopiterParts(filename string) []domain.Part {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if len(record) < 2 {
+		line++
+
+		if len(record) <= partIdx || len(record) <= oemIdx {
+			log.Printf("skip line %d: not enough columns: %v", line, record)
+			continue
+		}
+
+		partNumber := strings.TrimSpace(record[partIdx])
+		oem := strings.TrimSpace(record[oemIdx])
+		if partNumber == "" {
 			continue
 		}
 
 		parts = append(parts, domain.Part{
-			PartNumber: record[0],
-			Oem:        record[1],
+			PartNumber: partNumber,
+			Oem:        oem,
 		})
 	}
 
+	log.Printf("csv loaded: %d parts from %s", len(parts), filename)
 	return parts
+}
+
+func resolvePartColumns(header []string) (partIdx, oemIdx int) {
+	partIdx, oemIdx = -1, -1
+	for i, col := range header {
+		switch strings.ToLower(strings.TrimSpace(col)) {
+		case "partnumber", "part_number", "номер", "артикул":
+			partIdx = i
+		case "oem", "manufacturer", "производитель", "бренд":
+			oemIdx = i
+		}
+	}
+
+	// fallback: partnumber;oem;...
+	if partIdx == -1 {
+		partIdx = 0
+	}
+	if oemIdx == -1 {
+		oemIdx = 1
+	}
+	return partIdx, oemIdx
 }
 func WriteModelsToCSV(models []domain.Model, filename string, writeHeader bool) error {
 
