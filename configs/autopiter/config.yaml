@@ -1,8 +1,7 @@
-pause_ms: 200
+pause_ms: 1000
 request_timeout_sec: 5
 parts_file: internal/files/parts.csv
 output_csv: autopiter.csv
 skipped_csv: autopiter_skipped.csv
 not_found_csv: autopiter_notfound.csv
 log_file: autopiter.log
-search_top: 12

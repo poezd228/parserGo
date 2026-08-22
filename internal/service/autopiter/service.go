@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	errors2 "errors"
+	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"parser/internal/config/autopiter"
 	"parser/internal/domain"
@@ -15,6 +17,8 @@ import (
 
 	"github.com/schollz/progressbar/v3"
 )
+
+const rateLimitPause = 10 * time.Second
 
 type Service interface {
 	ParseData()
@@ -34,55 +38,116 @@ func NewService(cfg *autopiter.Config, proxy []string, parts []domain.Part) Serv
 	}
 }
 
-func (s *service) search(partNumber string, proxy string) (domain.AutopiterResponse, errors.ServiceError) {
-	var result domain.AutopiterResponse
+func (s *service) searchDetails(partNumber string, proxy string) (domain.AutopiterSearchDetailsResponse, errors.ServiceError) {
+	var result domain.AutopiterSearchDetailsResponse
 
-	timeout := time.Duration(s.cfg.RequestTimeoutSec) * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	link := domain.AutopiterSearchDetailsURL(partNumber)
+	log.Printf("searchdetails request: partNumber=%q proxy=%q url=%s", partNumber, proxy, link)
 
-	requestBody := domain.NewAutopiterSearchRequest(partNumber, s.cfg.SearchTop)
-	payload, _ := json.Marshal(requestBody)
-	log.Printf("search request: partNumber=%q proxy=%q body=%s", partNumber, proxy, string(payload))
-
-	res, err := utils.MakeAutopiterSearchRequest(ctx, domain.AutopiterSearchURL(), proxy, requestBody)
+	status, body, err := s.getWithRateLimit("searchdetails", link, proxy)
 	if err != nil {
-		log.Printf("search request error for %q: %v", partNumber, err)
-		return domain.AutopiterResponse{}, err
-	}
-	defer res.Body.Close()
-
-	body, readErr := io.ReadAll(res.Body)
-	if readErr != nil {
-		log.Printf("search read body error for %q: %v", partNumber, readErr)
-		return domain.AutopiterResponse{}, errors.BadRequest(readErr)
+		log.Printf("searchdetails request error for %q: %v", partNumber, err)
+		return domain.AutopiterSearchDetailsResponse{}, err
 	}
 
-	log.Printf("search response: partNumber=%q status=%d body=%s", partNumber, res.StatusCode, string(body))
+	log.Printf("searchdetails response: partNumber=%q status=%d body=%s", partNumber, status, string(body))
 
 	if unmarshalErr := json.Unmarshal(body, &result); unmarshalErr != nil {
-		log.Printf("search unmarshal error for %q: %v", partNumber, unmarshalErr)
-		return domain.AutopiterResponse{}, errors.UnableToUnmarshall(unmarshalErr)
+		return domain.AutopiterSearchDetailsResponse{}, errors.UnableToUnmarshall(unmarshalErr)
 	}
 
 	log.Printf(
-		"search parsed: partNumber=%q code=%q total=%d goods=%d",
+		"searchdetails parsed: partNumber=%q code=%q total=%d catalogs=%d",
 		partNumber,
 		result.Code,
 		result.Data.Total,
-		len(result.Data.Goods),
+		len(result.Data.Catalogs),
 	)
 
 	return result, nil
 }
 
-func (s *service) searchWithRetry(partNumber string, proxy string) (domain.AutopiterResponse, errors.ServiceError) {
-	result, err := s.search(partNumber, proxy)
-	if err != nil && errors2.Is(err.Error(), context.DeadlineExceeded) {
-		return s.search(partNumber, proxy)
+func (s *service) getCosts(proxy string, articleIDs ...int) (domain.AutopiterGetCostsResponse, errors.ServiceError) {
+	var result domain.AutopiterGetCostsResponse
+	if len(articleIDs) == 0 {
+		return result, nil
 	}
 
-	return result, err
+	link := domain.AutopiterGetCostsURL(articleIDs...)
+	log.Printf("getcosts request: ids=%v proxy=%q url=%s", articleIDs, proxy, link)
+
+	status, body, err := s.getWithRateLimit("getcosts", link, proxy)
+	if err != nil {
+		log.Printf("getcosts request error for ids=%v: %v", articleIDs, err)
+		return domain.AutopiterGetCostsResponse{}, err
+	}
+
+	log.Printf("getcosts response: ids=%v status=%d body=%s", articleIDs, status, string(body))
+
+	if unmarshalErr := json.Unmarshal(body, &result); unmarshalErr != nil {
+		return domain.AutopiterGetCostsResponse{}, errors.UnableToUnmarshall(unmarshalErr)
+	}
+
+	log.Printf("getcosts parsed: ids=%v code=%q costs=%d", articleIDs, result.Code, len(result.Data))
+	return result, nil
+}
+
+func (s *service) getWithRateLimit(requestName, link, proxy string) (int, []byte, errors.ServiceError) {
+	for {
+		ctx, cancel := s.requestContext()
+
+		res, err := utils.MakeAutopiterGetRequest(ctx, link, proxy)
+		cancel()
+		if err != nil {
+			return 0, nil, err
+		}
+
+		body, readErr := io.ReadAll(res.Body)
+		res.Body.Close()
+		if readErr != nil {
+			return 0, nil, errors.BadRequest(readErr)
+		}
+
+		if res.StatusCode == http.StatusTooManyRequests {
+			fmt.Fprintf(os.Stderr, "[%s] получен 429 Too Many Requests, пауза %s\n", requestName, rateLimitPause)
+			time.Sleep(rateLimitPause)
+			continue
+		}
+
+		return res.StatusCode, body, nil
+	}
+}
+
+func (s *service) parsePartWithRetry(part domain.Part, proxy string) ([]domain.Model, errors.ServiceError) {
+	details, err := s.searchDetails(part.PartNumber, proxy)
+	if err != nil && errors2.Is(err.Error(), context.DeadlineExceeded) {
+		details, err = s.searchDetails(part.PartNumber, proxy)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(details.Data.Catalogs) == 0 {
+		return nil, nil
+	}
+
+	articleIDs := make([]int, 0, len(details.Data.Catalogs))
+	for _, catalog := range details.Data.Catalogs {
+		articleIDs = append(articleIDs, catalog.ID)
+	}
+
+	costs, err := s.getCosts(proxy, articleIDs...)
+	if err != nil && errors2.Is(err.Error(), context.DeadlineExceeded) {
+		costs, err = s.getCosts(proxy, articleIDs...)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return domain.CatalogsToModels(part, details.Data.Catalogs, costs.Data), nil
+}
+
+func (s *service) requestContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), time.Duration(s.cfg.RequestTimeoutSec)*time.Second)
 }
 
 func (s *service) ParseData() {
@@ -106,7 +171,7 @@ func (s *service) ParseData() {
 			proxy = proxyInterface.(string)
 		}
 
-		result, svcErr := s.searchWithRetry(detail.PartNumber, proxy)
+		models, svcErr := s.parsePartWithRetry(detail, proxy)
 		if svcErr != nil && errors2.Is(svcErr.Error(), context.DeadlineExceeded) {
 			log.Println(svcErr)
 			if writeErr := utils.WriteModelsToCSV([]domain.Model{
@@ -129,7 +194,6 @@ func (s *service) ParseData() {
 			}
 		}
 
-		models := result.ToModel(detail)
 		if len(models) == 0 {
 			log.Printf("нет результатов для %s (%s)", detail.PartNumber, detail.Oem)
 			if writeErr := utils.WriteModelsToCSV([]domain.Model{

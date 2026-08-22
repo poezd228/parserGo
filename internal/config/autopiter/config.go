@@ -8,14 +8,13 @@ import (
 )
 
 type Config struct {
-	PauseMs            int    `yaml:"pause_ms"`
-	RequestTimeoutSec  int    `yaml:"request_timeout_sec"`
-	PartsFile          string `yaml:"parts_file"`
-	OutputCSV          string `yaml:"output_csv"`
-	SkippedCSV         string `yaml:"skipped_csv"`
-	NotFoundCSV        string `yaml:"not_found_csv"`
-	LogFile            string `yaml:"log_file"`
-	SearchTop          int    `yaml:"search_top"`
+	PauseMs           int    `yaml:"pause_ms"`
+	RequestTimeoutSec int    `yaml:"request_timeout_sec"`
+	PartsFile         string `yaml:"parts_file"`
+	OutputCSV         string `yaml:"output_csv"`
+	SkippedCSV        string `yaml:"skipped_csv"`
+	NotFoundCSV       string `yaml:"not_found_csv"`
+	LogFile           string `yaml:"log_file"`
 }
 
 func Load(path string) (*Config, error) {
@@ -54,8 +53,5 @@ func (c *Config) applyDefaults() {
 	}
 	if c.LogFile == "" {
 		c.LogFile = "autopiter.log"
-	}
-	if c.SearchTop <= 0 {
-		c.SearchTop = 12
 	}
 }

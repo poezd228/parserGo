@@ -16,6 +16,21 @@ import (
 	"github.com/google/uuid"
 )
 
+func MakeAutopiterGetRequest(ctx context.Context, link string, proxy string) (http.Response, errors2.ServiceError) {
+	client, svcErr := autopiterHTTPClient(proxy)
+	if svcErr != nil {
+		return http.Response{}, svcErr
+	}
+
+	req, err := http.NewRequest(http.MethodGet, link, nil)
+	if err != nil {
+		return http.Response{}, errors2.UnableToCreateReq(err)
+	}
+
+	setAutopiterHeaders(req)
+	return makeRequest(ctx, client, req)
+}
+
 func MakeAutopiterSearchRequest(ctx context.Context, link string, proxy string, body any) (http.Response, errors2.ServiceError) {
 	payload, err := json.Marshal(body)
 	if err != nil {
@@ -32,10 +47,15 @@ func MakeAutopiterSearchRequest(ctx context.Context, link string, proxy string, 
 		return http.Response{}, errors2.UnableToCreateReq(err)
 	}
 
+	setAutopiterHeaders(req)
+	req.Header.Set("content-type", "application/json")
+	return makeRequest(ctx, client, req)
+}
+
+func setAutopiterHeaders(req *http.Request) {
 	req.Header.Set("accept", "application/json, text/plain, */*")
 	req.Header.Set("accept-language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
 	req.Header.Set("cache-control", "no-cache")
-	req.Header.Set("content-type", "application/json")
 	req.Header.Set("origin", "https://autopiter.ru")
 	req.Header.Set("pragma", "no-cache")
 	req.Header.Set("referer", "https://autopiter.ru/")
@@ -44,8 +64,6 @@ func MakeAutopiterSearchRequest(ctx context.Context, link string, proxy string, 
 	req.Header.Set("sec-fetch-site", "same-origin")
 	req.Header.Set("user-agent", uarand.GetRandom())
 	req.Header.Set("x-ap-request-id", uuid.NewString())
-
-	return makeRequest(ctx, client, req)
 }
 
 func autopiterHTTPClient(proxy string) (http.Client, errors2.ServiceError) {
