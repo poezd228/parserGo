@@ -135,6 +135,8 @@ func (s *service) parsePartWithRetry(part domain.Part, proxy string) ([]domain.M
 		articleIDs = append(articleIDs, catalog.ID)
 	}
 
+	s.requestPause()
+
 	costs, err := s.getCosts(proxy, articleIDs...)
 	if err != nil && errors2.Is(err.Error(), context.DeadlineExceeded) {
 		costs, err = s.getCosts(proxy, articleIDs...)
@@ -148,6 +150,10 @@ func (s *service) parsePartWithRetry(part domain.Part, proxy string) ([]domain.M
 
 func (s *service) requestContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), time.Duration(s.cfg.RequestTimeoutSec)*time.Second)
+}
+
+func (s *service) requestPause() {
+	time.Sleep(utils.RandomizeMilliseconds(s.cfg.PauseMs))
 }
 
 func (s *service) ParseData() {
